@@ -1,22 +1,10 @@
 #!/bin/bash
 set -ex
 
-yum update -y
-yum install -y \
-    atlas-devel \
-    atlas-sse3-devel \
-    blas-devel \
-    gcc \
-    gcc-c++ \
-    lapack-devel \
-    python27-devel \
-    python27-virtualenv \
-    findutils \
-    zip
 
 do_pip () {
     pip install --upgrade pip wheel
-    test -f /outputs/requirements.txt && pip install --use-wheel -r /outputs/requirements.txt
+    test -f requirements.txt && pip install --use-wheel -r requirements.txt
     pip install --use-wheel --no-binary numpy numpy
     pip install --use-wheel --no-binary scipy scipy
     pip install --use-wheel sklearn
@@ -27,12 +15,12 @@ strip_virtualenv () {
     find $VIRTUAL_ENV/lib64/python2.7/site-packages/ -name "*.so" | xargs strip
     echo "venv stripped size $(du -sh $VIRTUAL_ENV | cut -f1)"
 
-    pushd $VIRTUAL_ENV/lib/python2.7/site-packages/ && zip -r -9 -q /tmp/partial-venv.zip * ; popd
-    pushd $VIRTUAL_ENV/lib64/python2.7/site-packages/ && zip -r -9 --out /outputs/venv.zip -q /tmp/partial-venv.zip * ; popd
-    echo "site-packages compressed size $(du -sh /outputs/venv.zip | cut -f1)"
+    pushd $VIRTUAL_ENV/lib/python2.7/site-packages/ && zip -r -9 -q ~/partial-venv.zip * ; popd
+    pushd $VIRTUAL_ENV/lib64/python2.7/site-packages/ && zip -r -9 --out ~/venv.zip -q ~/partial-venv.zip * ; popd
+    echo "site-packages compressed size $(du -sh ~/venv.zip | cut -f1)"
 
-    pushd $VIRTUAL_ENV && zip -r -q /outputs/full-venv.zip * ; popd
-    echo "venv compressed size $(du -sh /outputs/full-venv.zip | cut -f1)"
+    pushd $VIRTUAL_ENV && zip -r -q ~/full-venv.zip * ; popd
+    echo "venv compressed size $(du -sh ~/full-venv.zip | cut -f1)"
 }
 
 shared_libs () {
@@ -45,10 +33,10 @@ shared_libs () {
 
 main () {
     /usr/bin/virtualenv \
-        --python /usr/bin/python /sklearn_build \
+        --python /usr/bin/python sklearn_build_dev \
         --always-copy \
         --no-site-packages
-    source /sklearn_build/bin/activate
+    source sklearn_build_dev/bin/activate
 
     do_pip
 

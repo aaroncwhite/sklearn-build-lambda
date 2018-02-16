@@ -1,47 +1,72 @@
 #!/bin/bash
 set -ex
 
+export INSTALL_DIR=lib_pack
+
+init () {
+    if [ -d "$INSTALL_DIR" ]
+    then
+         echo Removing old temp dir
+         rm -fr $INSTALL_DIR
+    fi
+    if [ -d build_dir ]
+    then
+        echo Removing old venv
+        rm -fr build_dir
+    fi
+}
+
+clean_up () {
+    echo Cleaning up...
+    # rm -fr $INSTALL_DIR
+    deactivate
+    rm -fr build_dir
+}
+
 
 do_pip () {
+    # using pip -t to install directly to our temp dir
+    # saves time when looking for the right packages later
+    mkdir $INSTALL_DIR
     pip install --upgrade pip wheel
-    test -f requirements.txt && pip install --use-wheel -r requirements.txt
-    pip install --use-wheel --no-binary numpy numpy
-    pip install --use-wheel --no-binary scipy scipy
-    pip install --use-wheel sklearn
+    pip install --use-wheel -r requirements.txt -t $INSTALL_DIR
 }
 
 strip_virtualenv () {
-    echo "venv original size $(du -sh $VIRTUAL_ENV | cut -f1)"
-    find $VIRTUAL_ENV/lib64/python2.7/site-packages/ -name "*.so" | xargs strip
-    echo "venv stripped size $(du -sh $VIRTUAL_ENV | cut -f1)"
+    echo "venv original size $(du -sh $INSTALL_DIR | cut -f1)"
+    junk=(tests pip wheel easy_install *.pyc)
+    for value in "${junk[@]}"
+    do
+       echo $value
+       find $INSTALL_DIR -name $value -exec rm -rf {} +
+    done
 
-    pushd $VIRTUAL_ENV/lib/python2.7/site-packages/ && zip -r -9 -q ~/partial-venv.zip * ; popd
-    pushd $VIRTUAL_ENV/lib64/python2.7/site-packages/ && zip -r -9 --out ~/venv.zip -q ~/partial-venv.zip * ; popd
-    echo "site-packages compressed size $(du -sh ~/venv.zip | cut -f1)"
+    find $INSTALL_DIR -name "*.so*" | xargs strip
 
-    pushd $VIRTUAL_ENV && zip -r -q ~/full-venv.zip * ; popd
-    echo "venv compressed size $(du -sh ~/full-venv.zip | cut -f1)"
+    echo "venv stripped size $(du -sh $INSTALL_DIR | cut -f1)"
+
+    echo "site-packages size $(du -sh $INSTALL_DIR | cut -f1)"
+
+    pushd $INSTALL_DIR; zip -r -9 -q venv.zip *; popd
+    mv $INSTALL_DIR/venv.zip ./
+    echo "venv compressed size $(du -sh venv.zip | cut -f1)"
 }
 
-shared_libs () {
-    libdir="$VIRTUAL_ENV/lib64/python2.7/site-packages/lib/"
-    mkdir -p $VIRTUAL_ENV/lib64/python2.7/site-packages/lib || true
-    cp /usr/lib64/atlas/* $libdir
-    cp /usr/lib64/libquadmath.so.0 $libdir
-    cp /usr/lib64/libgfortran.so.3 $libdir
-}
+
 
 main () {
-    /usr/bin/virtualenv \
-        --python /usr/bin/python sklearn_build_dev \
+   init
+
+   /usr/bin/virtualenv \
+        --python /usr/bin/python build_dev \
         --always-copy \
         --no-site-packages
-    source sklearn_build_dev/bin/activate
+    source build_dev/bin/activate
 
     do_pip
 
-    shared_libs
-
     strip_virtualenv
+
+    clean_up
 }
 main

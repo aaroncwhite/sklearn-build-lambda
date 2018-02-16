@@ -1,0 +1,4 @@
+pypdf2
+nltk
+textblob
+pandas

@@ -2,5 +2,4 @@
 pypdf2
 nltk
 textblob
-numpy
 pandas
